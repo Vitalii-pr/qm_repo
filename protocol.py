@@ -1,7 +1,9 @@
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import math
+
 
 def plot_vector_on_sphere(theta: float, phi: float) -> None:
     """
@@ -40,12 +42,14 @@ def plot_vector_on_sphere(theta: float, phi: float) -> None:
     ax.scatter([x_vec], [y_vec], [z_vec], color='red', s=100)
     
 
-    ax.quiver(0, 0, 0, 1.5, 0, 0, color='black', arrow_length_ratio=0.05, linewidth=2)
-    ax.quiver(0, 0, 0, 0, 1.5, 0, color='black', arrow_length_ratio=0.05, linewidth=2)
-    ax.quiver(0, 0, 0, 0, 0, 1.5, color='black', arrow_length_ratio=0.05, linewidth=2)
-    ax.text(1.6, 0, 0, "X", fontsize=12)
-    ax.text(0, 1.6, 0, "Y", fontsize=12)
-    ax.text(0, 0, 1.6, "Z", fontsize=12)
+    ax.quiver(0, 0, 0, 0, 0, 1.5, color='black', arrow_length_ratio=0.05, linewidth=2)  # X-axis moves to Z
+    ax.quiver(0, 0, 0, 1.5, 0, 0, color='black', arrow_length_ratio=0.05, linewidth=2)  # Z-axis moves to X
+    ax.quiver(0, 0, 0, 0, 1.5, 0, color='black', arrow_length_ratio=0.05, linewidth=2)  # Y-axis remains Y
+    
+    ax.text(0, 0, 1.6, "X", fontsize=12)  # X is now in the Z direction
+    ax.text(1.6, 0, 0, "Z", fontsize=12)  # Z is now in the X direction
+    ax.text(0, 1.6, 0, "Y", fontsize=12)  # Y remains the same
+
     
 
     ax.text(x_vec*1.1, y_vec*1.1, z_vec*1.1, f"({x_vec:.2f}, {y_vec:.2f}, {z_vec:.2f})", fontsize=10)
@@ -67,20 +71,42 @@ def plot_vector_on_sphere(theta: float, phi: float) -> None:
     plt.show()
 
 
-def resolve_protocol() -> tuple[float, float]:
+
+def parse_equation(equation: str):
+    """
+    Parses a quantum state equation to extract x1, x2, y1, y2.
+    Expected format: ψ = (x1 + i x2)|0⟩ + (y1 + i y2)|1⟩
+    """
+    # Regex to extract complex coefficients of |0⟩ and |1⟩
+    matches = re.findall(r"\((-?\d*\.?\d*)\s*([\+\-])\s*i\s*(-?\d*\.?\d*)\)\|[01]⟩", equation)
+
+    if len(matches) != 2:
+        raise ValueError("Invalid equation format. Expected 2 complex coefficients.")
+
+
+    def parse_complex(match):
+        real, sign, imag = match
+        imag = float(imag) * (-1 if sign == "-" else 1)  
+        return float(real), imag
+
+    (x1, x2) = parse_complex(matches[0])  
+    (y1, y2) = parse_complex(matches[1]) 
+
+    return x1, x2, y1, y2
+
+
+def resolve_protocol(x1, x2, y1, y2) -> tuple[float, float]:
     """""
     Calculate the angles theta and phi for a specific vector on the unit sphere.
     """
-    x1 = 1  
-    x2 = 0
-    y1 = 1*math.sqrt(3)
-    y2 = 1*math.sqrt(3)
     c = math.sqrt(1/((complex(x1, x2)*complex(x1, -1*x2)).real + (complex(y1, y2)*complex(y1, -1*y2)).real))
     theta = 2*math.acos(c/x1)
     phi = math.asin(c*y2/math.sin(theta/2))
     return theta, phi
 
 if __name__ == "__main__":
-
-    theta, phi = resolve_protocol()
+    equation = "ψ = (3 + i 0)|0⟩ + (0 + i 1)|1⟩"
+    x1, x2, y1, y2 = parse_equation(equation)
+    print(f"Parsed coefficients: x1={x1}, x2={x2}, y1={y1}, y2={y2}")
+    theta, phi = resolve_protocol(x1, x2, y1, y2)
     plot_vector_on_sphere(theta, phi)
